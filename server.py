@@ -1,28 +1,64 @@
 import socket
+import requests
 
+def xor_encrypt_decrypt(message: str, key_string: str):
+    key = list(key_string)
+    output = []
+    for i in range(len(message)):
+        char_code = ord(message[i]) ^ ord(key[i % len(key)][0])
+        output.append(chr(char_code))
+    return "".join(output)
+
+def encrypt(message: str, key: str):
+    return xor_encrypt_decrypt(message, key)
+
+
+def decrypt(encrypted_message: str, key: str):
+    return xor_encrypt_decrypt(encrypted_message, key)
 
 def server_program():
-    # get the hostname
+    
+    BASE_URL = "http://127.0.0.1:5000"
     host = socket.gethostname()
-    port = 5000  # initiate port no above 1024
+    port = 6789  
 
-    server_socket = socket.socket()  # get instance
-    # look closely. The bind() function takes tuple as argument
-    server_socket.bind((host, port))  # bind host address and port together
+    server_socket = socket.socket()  
+    
+    server_socket.bind((host, port))  
+    server = requests.get(f"{BASE_URL}/generate-keys").json()
+    server_private, server_public = server["private_key"], server["public_key"]
 
-    # configure how many client the server can listen simultaneously
+    
     server_socket.listen(2)
-    conn, address = server_socket.accept()  # accept new connection
-    print("Connection from: " + str(address))
+    conn, address = server_socket.accept()  
+    print("Conexao realizada com sucesso! Digite algo no chat....")
+    first=0
     while True:
-        # receive data stream. it won't accept data packet greater than 1024 bytes
+        
         data = conn.recv(1024).decode()
+        if(first==0):
+            server_params = {"local_private_key": server_private, "remote_public_key": data}
+            server_shared_key = requests.get(
+                f"{BASE_URL}/generate-shared-key", params=server_params
+                ).json()["shared_key"]
+
+            conn.send(server_public.encode())
+            data = address
+            first+=1
         if not data:
-            # if data is not received break
+            
             break
-        print("from connected user: " + str(data))
-        data = input(' -> ')
-        conn.send(data.encode())  # send data to the client
+        if(not (data == address)):
+            
+            print("Mensagem criptografada recebida: " + data)
+            data = decrypt(data, server_shared_key)
+            print('Alice -> ' +  str(data))
+        print("-----------------------------------------")
+        data = input('Bob -> ')
+
+        encrypted_message = encrypt(data, server_shared_key)
+        print("Mensagem enviada encryptada : " + encrypted_message)
+        conn.send(encrypted_message.encode())  # send data to the client
 
     conn.close()  # close the connection
 
