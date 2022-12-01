@@ -55,7 +55,6 @@ chaves = {
 
 
 class DiffieHellman:
-    # Current minimum recommendation is 2048 bit (bits 14)
     def __init__(self, bits: int = 3) -> None:
         if bits not in chaves:
             raise ValueError("sem suporte para esses bits")
@@ -72,7 +71,6 @@ class DiffieHellman:
         return hex(public_key)[2:]
 
     def is_valid_public_key(self, key: int) -> bool:
-        # check if the other public key is valid based on NIST SP800-56
         if 2 <= key and key <= self.chave - 2:
             if pow(key, (self.chave - 1) // 2, self.chave) == 1:
                 return True
